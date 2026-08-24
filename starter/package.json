@@ -1,7 +1,7 @@
 {
   "name": "@kini-agent/kini",
-  "version": "0.1.0",
-  "description": "KINI - AI work orchestrator with modular operating systems",
+  "version": "0.2.0",
+  "description": "KINI - AI work orchestrator with modular systems and persistent personal profiles",
   "type": "module",
   "bin": {
     "kini": "./src/kini.mjs",
