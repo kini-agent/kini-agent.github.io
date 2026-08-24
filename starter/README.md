@@ -30,6 +30,32 @@ kini "사진 기록 앱 만들어볼까?"
 
 현재는 KINI Dev만 실행 가능하므로 새 개발 프로젝트 만들기로 연결됩니다.
 
+## 코딩 에이전트
+
+KINI Dev는 프로젝트 폴더에서 코딩 에이전트를 띄웁니다.
+특정 회사 CLI에 묶여 있지 않고, 설치된 것을 씁니다.
+
+```bash
+kini dev agent          # 설치된 에이전트로 시작
+kini dev agent list     # 무엇을 쓸 수 있는지 확인
+kini dev claude         # 특정 에이전트 지정
+KINI_AGENT=codex kini dev agent
+```
+
+목록에 없는 도구는 `~/kini/profile/AGENTS.json`에 더합니다.
+
+```json
+[{ "id": "gemini", "label": "Gemini CLI", "cmd": "gemini", "install": "npm install -g @google/gemini-cli" }]
+```
+
+## 테스트
+
+```bash
+npm test
+```
+
+CLI를 실제 프로세스로 띄우고 대화형 질문에 답하는 방식으로 확인합니다.
+
 ## 기존 DevOS 명령
 
 이전 `devos` 명령은 호환을 위해 남겨 둡니다.

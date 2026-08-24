@@ -66,7 +66,8 @@ KINI Dev 작업을 시작할 때 현재 개인 Profile은 프로젝트의 `.kini
 ## npm package
 
 패키지 이름은 `@kini-agent/kini`로 준비되어 있습니다.
-현재 Starter 버전은 `0.2.0`이며 실제 npm Registry 공개 전까지는 GitHub 설치 스크립트 또는 저장소의 `starter` 폴더에서 테스트할 수 있습니다.
+버전은 `starter/package.json` 하나를 따릅니다.
+실제 npm Registry 공개 전까지는 GitHub 설치 스크립트 또는 저장소의 `starter` 폴더에서 테스트할 수 있습니다.
 
 ## Documentation
 

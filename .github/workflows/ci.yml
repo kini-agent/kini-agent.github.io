@@ -11,7 +11,13 @@ permissions:
 
 jobs:
   verify-cli:
-    runs-on: ubuntu-latest
+    # KINI 는 설치 스크립트부터 OS 별로 다릅니다. 한 OS 에서만 돌리면
+    # Windows 쪽이 깨진 채로 오래 남습니다. 세 곳에서 같은 테스트를 돌립니다.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: starter
@@ -26,18 +32,50 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Check CLI syntax
+        shell: bash
         run: |
-          node --check src/kini.mjs
-          node --check src/devos.mjs
-          node --check src/systems/devos.mjs
+          # 파일을 하나씩 적어 두면 새로 만든 파일이 조용히 빠집니다.
+          find src -name '*.mjs' -print0 | xargs -0 -n1 node --check
+
+      - name: Test
+        run: npm test
 
       - name: Smoke test KINI
+        shell: bash
         run: |
           export KINI_HOME="$RUNNER_TEMP/kini"
           node src/kini.mjs --version
           node src/kini.mjs init
           node src/kini.mjs doctor
           node src/kini.mjs systems
+          # 두 번째 init 은 갱신 경로를 지납니다. 여기서 죽으면 업그레이드가 깨진 것입니다.
+          node src/kini.mjs init
 
       - name: Verify npm package contents
         run: npm pack --dry-run
+
+  verify-installers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          for f in setup.sh setup-macos.sh setup-linux.sh; do bash -n "$f"; done
+
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path ./setup.ps1), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Host $_ }; exit 1 }
+
+      - name: 임시 폴더에 clone 하고 지우는 설치가 없는지
+        run: |
+          # npm link 는 심볼릭 링크라, 임시 폴더에 clone 하면 설치가 끝난 뒤
+          # 전역 kini 가 끊어진 링크가 됩니다. 한 번 겪은 문제라 CI 로 막습니다.
+          if grep -nE 'GetTempPath|mktemp -d' setup.ps1 setup.sh; then
+            echo "설치 스크립트가 임시 폴더에 저장소를 두고 있습니다."; exit 1
+          fi
