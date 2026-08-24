@@ -6,8 +6,6 @@ REPO="${KINI_REPO:-https://github.com/kini-agent/kini-agent.github.io.git}"
 NODE_MAJOR_REQUIRED=22
 NODE_LTS_MAJOR=24
 NVM_VERSION=v0.40.7
-TMP=""
-trap '[[ -n "$TMP" && -d "$TMP" ]] && rm -rf "$TMP"' EXIT
 
 ok(){ printf "\033[32m[OK]\033[0m %s\n" "$*"; }
 info(){ printf "\033[36m[INFO]\033[0m %s\n" "$*"; }
@@ -44,8 +42,10 @@ else fail "지원하지 않는 OS입니다."; fi
 
 ok "Git $(git --version | awk '{print $3}')"
 ok "Node $(node -v)"
-has pnpm || npm install -g pnpm
-ok "pnpm $(pnpm -v)"
+# pnpm 은 없어도 KINI 가 돕니다. 설치가 실패했다고 전체 설치를 멈추면 안 됩니다.
+# set -e 아래에서는 `ok "pnpm $(pnpm -v)"` 한 줄이 그대로 설치 중단이 됩니다.
+has pnpm || npm install -g pnpm || info "pnpm 설치를 건너뜁니다. (선택 사항)"
+if has pnpm; then ok "pnpm $(pnpm -v)"; fi
 
 # 코딩 에이전트는 **강제로 깔지 않습니다.**
 # 예전에는 @openai/codex 를 무조건 설치했는데, 이미 다른 에이전트를 쓰는
@@ -61,9 +61,9 @@ else
 fi
 
 # ⚠️ **임시 폴더에 clone 하면 안 됩니다.** npm link 는 복사가 아니라 심볼릭
-# 링크라, 아래 trap 이 임시 폴더를 지우는 순간 전역 kini 가 끊어진 링크가
-# 됩니다. 설치 중에는 멀쩡해 보이고(kini init 까지 성공) 스크립트가 끝난
-# 뒤부터 안 됩니다. 그래서 워크스페이스 안에 영구히 둡니다.
+# 링크라, 임시 폴더를 지우는 순간 전역 kini 가 끊어진 링크가 됩니다. 설치
+# 중에는 멀쩡해 보이고(kini init 까지 성공) 스크립트가 끝난 뒤부터 안 됩니다.
+# 그래서 워크스페이스 안에 영구히 둡니다.
 SRC="$KINI_HOME/.repo"
 info "KINI repository 다운로드"
 mkdir -p "$KINI_HOME"
