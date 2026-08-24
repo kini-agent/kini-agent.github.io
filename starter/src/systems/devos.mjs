@@ -44,15 +44,27 @@ const BUILTIN_AGENTS=[
  * 파일이 깨져 있어도 명령이 죽지 않게 조용히 무시합니다 - 이건 편의 기능이지
  * 없으면 안 되는 것이 아닙니다.
  */
-function loadAgents(kiniHome){
+export function loadAgents(kiniHome){
   const extra=[];
-  try{
-    const f=path.join(kiniHome||'','profile','AGENTS.json');
-    if(exists(f)){
+  const f=path.join(kiniHome||'','profile','AGENTS.json');
+  if(exists(f)){
+    /**
+     * ⚠️ 예전에는 실패를 통째로 삼켰습니다. 그래서 JSON 에 쉼표 하나 잘못
+     * 찍으면 추가한 에이전트가 목록에서 그냥 사라졌고, 왜 안 나오는지 알
+     * 방법이 없었습니다. 없어도 KINI 는 돌아가야 하니 멈추지는 않되,
+     * 무슨 일이 있었는지는 말합니다.
+     */
+    try{
       const j=JSON.parse(fs.readFileSync(f,'utf8'));
-      if(Array.isArray(j)) for(const a of j) if(a&&a.id&&a.cmd) extra.push(a);
+      if(!Array.isArray(j)) console.warn(`[경고] ${f} 는 배열이어야 합니다. 무시합니다.`);
+      else for(const a of j){
+        if(a&&a.id&&a.cmd) extra.push(a);
+        else console.warn(`[경고] ${f} 의 항목에 id 또는 cmd 가 없습니다. 무시합니다.`);
+      }
+    }catch(e){
+      console.warn(`[경고] ${f} 를 읽지 못했습니다: ${e.message}`);
     }
-  }catch{}
+  }
   const byId=new Map(BUILTIN_AGENTS.map(a=>[a.id,a]));
   for(const a of extra) byId.set(a.id,{...byId.get(a.id),...a});
   return [...byId.values()];
