@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { runDevOS as runBaseDevOS, isAgentCommand, PROJECT_GITIGNORE } from './devos.mjs';
+import { runDevOS as runBaseDevOS, isAgentCommand, PROJECT_GITIGNORE, ensureAgentBridges } from './devos.mjs';
 import { buildProfileContext, ensureProfile } from '../profile.mjs';
 
 const exists=p=>fs.existsSync(p);
@@ -36,6 +36,9 @@ function syncProfile(root,kiniHome){
   } else {
     fs.writeFileSync(ignorePath,PROJECT_GITIGNORE,'utf8');
   }
+
+  // 이미 만들어진 프로젝트에도 규칙을 읽히게 하는 다리를 놓습니다.
+  ensureAgentBridges(root,kiniHome);
 
   const agentsPath=path.join(root,'AGENTS.md');
   const note='- 작업 시작 전에 .kini/KINI_PROFILE.md를 읽고 개인 선호를 적용합니다. 단, Core/프로젝트의 안전 규칙이 항상 우선합니다.';

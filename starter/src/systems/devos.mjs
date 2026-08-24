@@ -26,6 +26,47 @@ export const PROJECT_GITIGNORE='node_modules/\n.env\n.env.*\ndist/\nbuild/\n.DS_
 const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9가-힣]+/g,'-').replace(/^-+|-+$/g,'')||'project';
 
 /**
+ * 프로젝트 작업 규칙의 원본. 내용은 언제나 이 파일 하나에만 둡니다.
+ */
+export const PROJECT_RULES_FILE='AGENTS.md';
+
+const BRIDGE_IMPORTS=`@${PROJECT_RULES_FILE}\n@.kini/KINI_PROFILE.md\n`;
+const BRIDGE_NOTE=`규칙 원본은 ${PROJECT_RULES_FILE} 하나입니다. 이 파일은 그것을 불러오기만 합니다.`;
+const BRIDGE_BODY=`# 이 프로젝트의 작업 규칙\n\n${BRIDGE_NOTE}\n\n${BRIDGE_IMPORTS}\n.kini/KINI_PROFILE.md 는 개인 설정이라 저장소에 올라가지 않습니다.\n다른 사람이 이 저장소를 받으면 그 줄은 비어 있고 ${PROJECT_RULES_FILE} 규칙만 적용됩니다.\n`;
+
+/**
+ * 규칙을 읽히게 하려고 에이전트별로 놓는 다리.
+ *
+ * ⚠️ 에이전트마다 프로젝트 규칙을 읽는 파일 이름이 다릅니다. Claude Code 는
+ * CLAUDE.md 만 자동으로 싣고 AGENTS.md 는 싣지 않습니다. 그래서 KINI 가 써 준
+ * 프로젝트 규칙과 개인 Profile 이 **한 줄도 전달되지 않은 채로** 작업이
+ * 돌았습니다. 오류가 없어서 규칙이 도는 줄 알게 되는 종류입니다.
+ *
+ * 규칙을 파일마다 복사하지는 않습니다. 원본은 AGENTS.md 하나로 두고, 그 파일을
+ * 불러오기만 하는 얇은 파일을 놓습니다.
+ */
+export function ensureAgentBridges(root,kiniHome){
+  const targets=new Set();
+  for(const a of loadAgents(kiniHome)){
+    if(!a.contextFile || a.contextFile===PROJECT_RULES_FILE) continue;
+    // 안 깔린 에이전트의 파일까지 만들면 저장소에 쓰지도 않는 파일이 늘어납니다.
+    if(!has(a.cmd)) continue;
+    targets.add(a.contextFile);
+  }
+  const made=[];
+  for(const file of targets){
+    const p=path.join(root,file);
+    if(!exists(p)){ fs.writeFileSync(p,BRIDGE_BODY,'utf8'); made.push(file); continue; }
+    const current=fs.readFileSync(p,'utf8');
+    if(current.includes(`@${PROJECT_RULES_FILE}`)) continue;
+    // 이미 있는 파일은 지우지 않고 불러오기 줄만 더합니다.
+    fs.appendFileSync(p,`${current.endsWith('\n')?'':'\n'}\n${BRIDGE_NOTE}\n\n${BRIDGE_IMPORTS}`,'utf8');
+    made.push(file);
+  }
+  return made;
+}
+
+/**
  * 쓸 수 있는 코딩 에이전트 목록.
  *
  * 예전에는 `codex` 하나가 코드에 박혀 있어서 다른 모델을 쓰는 사람은 이 명령을
@@ -35,8 +76,8 @@ const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9가-힣]+/g,'-
  * 여기 없는 도구는 profile 에서 더할 수 있습니다 (아래 loadAgents 참고).
  */
 const BUILTIN_AGENTS=[
-  {id:'claude',label:'Claude Code',cmd:'claude',install:'npm install -g @anthropic-ai/claude-code'},
-  {id:'codex', label:'Codex CLI',  cmd:'codex', install:'npm install -g @openai/codex'},
+  {id:'claude',label:'Claude Code',cmd:'claude',install:'npm install -g @anthropic-ai/claude-code',contextFile:'CLAUDE.md'},
+  {id:'codex', label:'Codex CLI',  cmd:'codex', install:'npm install -g @openai/codex',contextFile:PROJECT_RULES_FILE},
 ];
 
 /**
@@ -179,7 +220,7 @@ async function newProject(ideaArg,kiniHome){
     ensure(path.join(root,'planning'));
     ensure(path.join(root,'.kini','dev'));
 
-    fs.writeFileSync(path.join(root,'AGENTS.md'),`# ${name} — AI 작업 규칙\n\n이 프로젝트는 KINI Dev가 관리합니다.\n\n## 작업 원칙\n- docs/SPEC.md와 docs/DEFINITION_OF_DONE.md를 먼저 읽습니다.\n- UI나 Agent가 DB를 직접 수정하지 않습니다.\n- Tool → Service → Core 순서를 지킵니다.\n- 구현 → 테스트 → 스스로 검토 → 수정 → 다시 검증합니다.\n- 삭제, 비용 발생, Secret 필요, 운영 배포처럼 위험한 결정은 사용자 확인을 받습니다.\n`);
+    fs.writeFileSync(path.join(root,PROJECT_RULES_FILE),`# ${name} — AI 작업 규칙\n\n이 프로젝트는 KINI Dev가 관리합니다.\n\n## 작업 원칙\n- docs/SPEC.md와 docs/DEFINITION_OF_DONE.md를 먼저 읽습니다.\n- UI나 Agent가 DB를 직접 수정하지 않습니다.\n- Tool → Service → Core 순서를 지킵니다.\n- 구현 → 테스트 → 스스로 검토 → 수정 → 다시 검증합니다.\n- 삭제, 비용 발생, Secret 필요, 운영 배포처럼 위험한 결정은 사용자 확인을 받습니다.\n`);
     fs.writeFileSync(path.join(root,'docs','PRODUCT.md'),`# 제품 설명\n\n## 만들고 싶은 것\n${idea}\n\n## 주요 사용자\n${user}\n\n## 해결하려는 문제\n${problem}\n`);
     fs.writeFileSync(path.join(root,'docs','SPEC.md'),`# 기능 요구사항\n\n## 첫 버전 핵심 기능\n${mvp}\n\n## 플랫폼\n${platform}\n\n## 주 언어\n${language}\n\n## 데이터 저장\n${db}\n`);
     fs.writeFileSync(path.join(root,'docs','ARCHITECTURE.md'),`# 프로그램 구조\n\n화면 / CLI / MCP / AI\n        ↓\n      Tool\n        ↓\n     Service\n        ↓\n      Core\n        ↓\n Repository / DB\n`);
@@ -190,6 +231,8 @@ async function newProject(ideaArg,kiniHome){
     fs.writeFileSync(path.join(root,'planning','DECISIONS.md'),'# 중요한 결정 기록\n');
     fs.writeFileSync(path.join(root,'.kini','dev','project.json'),JSON.stringify({schemaVersion:1,system:'devos',name,slug:s,idea,mode,language,platform,autonomy,targetUser:user,coreProblem:problem,mvp,database:db},null,2));
     fs.writeFileSync(path.join(root,'.gitignore'),PROJECT_GITIGNORE);
+
+    ensureAgentBridges(root,kiniHome);
 
     if(has('git')){
       run('git',['init'],{cwd:root});

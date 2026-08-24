@@ -45,8 +45,16 @@ KINI_AGENT=codex kini dev agent
 목록에 없는 도구는 `~/kini/profile/AGENTS.json`에 더합니다.
 
 ```json
-[{ "id": "gemini", "label": "Gemini CLI", "cmd": "gemini", "install": "npm install -g @google/gemini-cli" }]
+[{ "id": "gemini", "label": "Gemini CLI", "cmd": "gemini", "install": "npm install -g @google/gemini-cli", "contextFile": "GEMINI.md" }]
 ```
+
+`contextFile`은 그 에이전트가 프로젝트 규칙을 자동으로 읽는 파일 이름입니다.
+에이전트마다 이름이 다릅니다.
+Claude Code는 `CLAUDE.md`만 읽고 `AGENTS.md`는 읽지 않습니다.
+
+규칙 원본은 언제나 `AGENTS.md` 하나입니다.
+KINI는 규칙을 파일마다 복사하지 않고, 원본을 불러오기만 하는 얇은 파일을 놓습니다.
+`AGENTS.md`를 그대로 읽는 에이전트에게는 아무것도 만들지 않습니다.
 
 ## 테스트
 

@@ -199,6 +199,67 @@ test('프로젝트가 하나도 없으면 만드는 법을 알려준다', () => 
   assert.match(out, /kini dev new/);
 });
 
+/**
+ * 다리 테스트는 실제로 깔린 에이전트에 기대지 않습니다. claude 가 있는 기계와
+ * 없는 CI 에서 결과가 달라지면 테스트가 환경을 보고 흔들립니다. profile 로
+ * 가짜 에이전트를 정의해서 규칙만 확인합니다.
+ */
+const REAL_CMD = process.platform === 'win32' ? 'where' : 'true';
+function defineAgents(home, agents) {
+  fs.writeFileSync(path.join(home, 'profile', 'AGENTS.json'), JSON.stringify(agents));
+}
+
+test('규칙 파일을 안 읽는 에이전트에게는 다리를 놓는다', async () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  defineAgents(home, [{ id: 'fake', label: 'Fake', cmd: REAL_CMD, contextFile: 'FAKEAGENT.md' }]);
+
+  const { root } = await makeProject(home);
+  const bridge = path.join(root, 'FAKEAGENT.md');
+  assert.ok(exists(bridge), '규칙이 실리지 않는 에이전트에게는 불러오기 파일이 있어야 합니다');
+  const body = read(bridge);
+  assert.match(body, /@AGENTS\.md/);
+  assert.match(body, /@\.kini\/KINI_PROFILE\.md/);
+  // 규칙을 복사하지 않고 불러오기만 해야 합니다. 원본이 둘이 되면 곧 어긋납니다.
+  assert.doesNotMatch(body, /Tool → Service → Core/);
+  assert.match(git(['ls-files'], root).stdout, /FAKEAGENT\.md/, '첫 커밋에 들어가야 합니다');
+});
+
+test('AGENTS.md 를 그대로 읽는 에이전트에게는 아무것도 하지 않는다', async () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  defineAgents(home, [{ id: 'plain', label: 'Plain', cmd: REAL_CMD, contextFile: 'AGENTS.md' }]);
+
+  const { root } = await makeProject(home);
+  assert.doesNotMatch(read(path.join(root, 'AGENTS.md')), /@AGENTS\.md/, '자기 자신을 불러오면 안 됩니다');
+});
+
+test('설치되지 않은 에이전트의 파일은 만들지 않는다', async () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  defineAgents(home, [{ id: 'ghost', label: 'Ghost', cmd: 'kini-no-such-command-xyz', contextFile: 'GHOST.md' }]);
+
+  const { root } = await makeProject(home);
+  assert.equal(exists(path.join(root, 'GHOST.md')), false, '쓰지도 않는 파일을 저장소에 늘리면 안 됩니다');
+});
+
+test('이미 있는 파일은 덮어쓰지 않고 불러오기 줄만 더한다', async () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  const { root } = await makeProject(home);
+
+  const mine = path.join(root, 'FAKEAGENT.md');
+  fs.writeFileSync(mine, '# 내가 쓴 메모\n\n이 줄은 남아야 합니다.\n');
+  defineAgents(home, [{ id: 'fake', label: 'Fake', cmd: REAL_CMD, contextFile: 'FAKEAGENT.md' }]);
+
+  kini(['dev', 'status'], { home, cwd: root });
+  kini(['dev', 'status'], { home, cwd: root });
+
+  const body = read(mine);
+  assert.match(body, /이 줄은 남아야 합니다/);
+  assert.equal(body.match(/@AGENTS\.md/g).length, 1, '두 번 실행해도 한 번만 더해야 합니다');
+});
+
 test('doctor 도 profile 로 더한 에이전트를 안다', () => {
   const home = tempHome();
   kini(['init'], { home });
