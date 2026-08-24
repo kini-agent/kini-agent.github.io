@@ -1,0 +1,8 @@
+{
+  "name": "devos-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "devos": "./src/devos.mjs" },
+  "engines": { "node": ">=22" }
+}
