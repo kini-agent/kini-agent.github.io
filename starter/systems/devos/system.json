@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "devos",
+  "name": "KINI Dev",
+  "command": "dev",
+  "status": "built-in",
+  "description": "소프트웨어 개발 프로젝트를 계획하고 실행하는 KINI의 첫 번째 시스템입니다.",
+  "intents": [
+    "software-development",
+    "coding",
+    "app-development",
+    "bug-fixing"
+  ],
+  "commands": [
+    "doctor",
+    "new",
+    "status",
+    "worktree",
+    "codex"
+  ],
+  "futureCommands": [
+    "plan",
+    "run",
+    "verify",
+    "release"
+  ],
+  "permissions": {
+    "humanApproval": [
+      "destructive",
+      "paid",
+      "secret-dependent",
+      "production-critical"
+    ]
+  }
+}
