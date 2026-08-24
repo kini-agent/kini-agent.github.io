@@ -6,8 +6,23 @@ import { spawnSync } from 'node:child_process';
 
 const ensure=p=>fs.mkdirSync(p,{recursive:true});
 const exists=p=>fs.existsSync(p);
-const run=(cmd,args=[],opts={})=>spawnSync(cmd,args,{encoding:'utf8',shell:process.platform==='win32',...opts});
+/**
+ * ⚠️ shell 을 켜지 않습니다. Windows 에서 shell:true 면 인자가 그대로 명령줄에
+ * 이어 붙어서, 공백이 든 인자(커밋 메시지 등)가 여러 개로 쪼개집니다. git 도
+ * where 도 셸 없이 잘 뜹니다. 셸이 정말 필요한 것은 .cmd 로 깔리는 에이전트
+ * CLI 하나뿐이라 그 자리에서만 켭니다.
+ */
+const run=(cmd,args=[],opts={})=>spawnSync(cmd,args,{encoding:'utf8',...opts});
 const has=cmd=>(process.platform==='win32'?run('where',[cmd]):run('which',[cmd])).status===0;
+/**
+ * 프로젝트 기본 .gitignore.
+ *
+ * ⚠️ `.kini/KINI_PROFILE.md` 는 개인 선호를 담아 자동 생성되는 파일입니다.
+ * 무시하지 않으면 팀 저장소나 공개 저장소에 개인 설정이 그대로 커밋됩니다.
+ * `.kini/dev/project.json` 은 프로젝트 정보라 같이 커밋되는 게 맞습니다.
+ */
+export const PROJECT_GITIGNORE='node_modules/\n.env\n.env.*\ndist/\nbuild/\n.DS_Store\n.kini/KINI_PROFILE.md\n';
+
 const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9가-힣]+/g,'-').replace(/^-+|-+$/g,'')||'project';
 
 /**
@@ -218,17 +233,30 @@ function help(){
   console.log(`kini dev doctor\nkini dev new [아이디어]\nkini dev status\nkini dev worktree new <기능명>\nkini dev agent          설치된 에이전트로 시작\nkini dev agent list     무엇을 쓸 수 있는지\nkini dev claude         특정 에이전트 지정\nkini dev codex          (같음 - 예전 이름도 그대로 됩니다)`);
 }
 
+/**
+ * 이 명령이 코딩 에이전트를 여는가.
+ *
+ * ⚠️ 목록은 profile/AGENTS.json 으로 늘어나므로 이름을 어디에도 두 번 적지
+ * 않습니다. 예전에 devos-profiled.mjs 가 자기 목록을 따로 들고 있었는데, 거기
+ * 빠진 에이전트로 시작하면 개인 설정이 안 실린 채로 돌았습니다.
+ */
+export function isAgentCommand(cmd,kiniHome){
+  if(!cmd) return false;
+  if(cmd==='agent') return true;
+  return loadAgents(kiniHome).some(a=>a.id===cmd||a.cmd===cmd);
+}
+
 export async function runDevOS(args,{kiniHome}){
   const [cmd,...rest]=args;
   if(!cmd || cmd==='help' || cmd==='--help' || cmd==='-h') help();
   else if(cmd==='doctor') devDoctor(kiniHome);
   else if(cmd==='new') await newProject(rest.join(' '),kiniHome);
-  else if(cmd==='status') status();
+  else if(cmd==='status') status(kiniHome);
   else if(cmd==='worktree'&&rest[0]==='new') worktree(rest.slice(1).join('-'),kiniHome);
   // ⚠️ `codex` 는 예전부터 쓰던 이름이라 그대로 둡니다. 문서와 습관에 남아
   // 있는 명령을 없애면 고치는 김에 남의 흐름을 끊게 됩니다.
   else if(cmd==='agent'&&rest[0]==='list') agentList(kiniHome);
   else if(cmd==='agent') agent(rest[0],kiniHome);
-  else if(loadAgents(kiniHome).some(a=>a.id===cmd||a.cmd===cmd)) agent(cmd,kiniHome);
+  else if(isAgentCommand(cmd,kiniHome)) agent(cmd,kiniHome);
   else help();
 }
