@@ -91,6 +91,61 @@ test('새 프로젝트를 만들면 안내대로 다음 단계가 이어진다',
   assert.doesNotMatch(out, /kini dev codex/);
 });
 
+test('묻지 않고 프로젝트를 만들 수 있다', () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  const { code, out } = kini(['dev', 'new', '할 일 관리 앱',
+    '--slug', 'todo', '--problem', '할 일이 흩어져 있음', '--mvp', '등록,완료', '--yes', '--json'], { home });
+
+  assert.equal(code, 0, out);
+  // --json 은 stdout 에 한 줄만 남겨야 스크립트가 받아 쓸 수 있습니다.
+  const line = out.trim().split('\n').filter(l => l.startsWith('{')).pop();
+  const result = JSON.parse(line);
+  assert.equal(result.ok, true);
+  assert.equal(result.slug, 'todo');
+  assert.equal(result.language, 'typescript');
+  assert.ok(exists(path.join(result.root, 'docs', 'SPEC.md')));
+});
+
+test('정하지 않은 것이 있으면 만들지 않고 실패한다', () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  const { code, out } = kini(['dev', 'new', '뭔가', '--slug', 'x', '--yes'], { home });
+
+  assert.equal(code, 1, '조용히 성공으로 끝나면 안 됩니다');
+  assert.match(out, /해결하려는 문제/);
+  assert.match(out, /첫 버전 핵심 기능/);
+  assert.equal(exists(path.join(home, 'projects', 'x')), false);
+});
+
+test('모르는 옵션과 쓸 수 없는 값은 그 자리에서 말한다', () => {
+  const home = tempHome();
+  kini(['init'], { home });
+
+  const bad = kini(['dev', 'new', '뭔가', '--nope', '1'], { home });
+  assert.equal(bad.code, 1);
+  assert.match(bad.out, /모르는 옵션/);
+
+  const wrong = kini(['dev', 'new', '뭔가', '--language', 'cobol'], { home });
+  assert.equal(wrong.code, 1);
+  assert.match(wrong.out, /typescript/, '쓸 수 있는 값을 알려줘야 합니다');
+});
+
+test('profile 의 기본값이 실제로 적용된다', () => {
+  const home = tempHome();
+  kini(['init'], { home });
+  fs.writeFileSync(path.join(home, 'profile', 'DEFAULTS.json'),
+    JSON.stringify({ language: 'go', database: 'sqlite', db: 'sqlite', platform: 'mobile' }));
+
+  const { out } = kini(['dev', 'new', '앱', '--slug', 'a', '--problem', 'p', '--mvp', 'm', '--yes', '--json'], { home });
+  const result = JSON.parse(out.trim().split('\n').filter(l => l.startsWith('{')).pop());
+  assert.equal(result.language, 'go');
+  assert.equal(result.platform, 'mobile');
+  assert.equal(result.database, 'sqlite');
+  // 모르는 항목은 무시하되 조용히 넘어가지 않습니다.
+  assert.match(out, /경고/);
+});
+
 test('만든 직후 바로 worktree 를 만들 수 있다', async () => {
   const home = tempHome();
   const { root } = await makeProject(home);

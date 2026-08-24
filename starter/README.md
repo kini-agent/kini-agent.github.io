@@ -30,6 +30,38 @@ kini "사진 기록 앱 만들어볼까?"
 
 현재는 KINI Dev만 실행 가능하므로 새 개발 프로젝트 만들기로 연결됩니다.
 
+## 묻지 않고 만들기
+
+`kini dev new`는 옵션 없이 부르면 하나씩 물어봅니다.
+스크립트나 AI 에이전트가 부를 때는 옵션으로 답을 넘깁니다.
+
+```bash
+kini dev new "할 일 관리 앱" \
+  --slug todo --problem "할 일이 흩어져 있음" --mvp "등록,완료,오늘 보기" \
+  --yes --json
+```
+
+`--json`은 stdout에 결과 한 줄만 남깁니다. 사람이 읽는 안내는 stderr로 갑니다.
+만들고 싶은 것, 해결하려는 문제, 첫 버전 기능이 없으면 만들지 않고 종료 코드 1로 끝냅니다.
+
+옵션으로 주지 않은 값은 `~/kini/profile/DEFAULTS.json`을 따릅니다.
+항목 이름은 옵션 이름과 같습니다.
+
+```json
+{ "mode": "standard", "language": "typescript", "platform": "web", "autonomy": "standard", "db": "postgresql" }
+```
+
+## Claude Code에서 /idea 로 시작하기
+
+`integrations/claude-code/idea`를 스킬 폴더에 연결하면 `/idea`로 프로젝트를 시작할 수 있습니다.
+
+```bash
+ln -s ~/kini/.repo/integrations/claude-code/idea ~/.claude/skills/idea
+```
+
+복사하지 않고 연결합니다.
+복사본을 두면 KINI를 갱신해도 스킬은 옛날 것으로 남습니다.
+
 ## 코딩 에이전트
 
 KINI Dev는 프로젝트 폴더에서 코딩 에이전트를 띄웁니다.

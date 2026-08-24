@@ -186,79 +186,198 @@ function devDoctor(kiniHome){
   console.log(`Git: ${has('git')?'ready':'missing'}`);
   for(const a of loadAgents(kiniHome)) console.log(`${a.label}: ${has(a.cmd)?'ready':'missing'}`);
 }
-async function newProject(ideaArg,kiniHome){
-  header();
-  const rl=readline.createInterface({input,output});
+/**
+ * 마법사가 묻는 선택지. 대화형 화면과 옵션 검증이 같은 목록을 봅니다.
+ */
+const CHOICES={
+  mode:[['Quick — 빠른 실험','quick'],['Standard — 일반 프로젝트','standard'],['Strict — 결정이 부족하면 시작하지 않음','strict'],['Production — 운영 배포 기준','production']],
+  language:[['TypeScript','typescript'],['Java','java'],['Python','python'],['Rust','rust'],['C# / .NET','dotnet'],['Go','go']],
+  platform:[['Web','web'],['Mobile','mobile'],['Desktop','desktop'],['Web + Mobile','web+mobile'],['여러 플랫폼','multi']],
+  autonomy:[['Assisted — 큰 작업 전 확인','assisted'],['Standard — Milestone 단위 확인','standard'],['Autonomous — 위험 작업 외 자동 진행','autonomous']],
+  db:[['PostgreSQL','postgresql'],['SQLite','sqlite'],['기기/로컬 저장','local'],['아직 결정하지 않음','undecided']]
+};
+const allowed=key=>CHOICES[key].map(([,v])=>v);
+const BASE_DEFAULTS={mode:'standard',language:'typescript',platform:'web',autonomy:'standard',user:'일반 사용자',db:'postgresql'};
+
+/**
+ * profile/DEFAULTS.json 으로 기본값을 바꿉니다.
+ *
+ * STACKS.md 에 "웹은 TypeScript" 라고 적어 두어도 마법사 기본값이 그대로면 문서와
+ * 실제가 따로 놉니다. 적어 둔 선택이 실제로 적용되는 자리를 하나 둡니다.
+ */
+function loadDefaults(kiniHome){
+  const out={...BASE_DEFAULTS};
+  const f=path.join(kiniHome||'','profile','DEFAULTS.json');
+  if(!exists(f)) return out;
   try{
-    const idea=ideaArg||await ask(rl,'무엇을 만들어볼까요?');
-    const s=slug(await ask(rl,'프로젝트 폴더명',slug(idea).slice(0,36)));
-    const name=await ask(rl,'프로젝트 이름',s);
-    const mode=await choose(rl,'개발 모드',[['Quick — 빠른 실험','quick'],['Standard — 일반 프로젝트','standard'],['Strict — 결정이 부족하면 시작하지 않음','strict'],['Production — 운영 배포 기준','production']],1);
-    const language=await choose(rl,'주 언어',[['TypeScript','typescript'],['Java','java'],['Python','python'],['Rust','rust'],['C# / .NET','dotnet'],['Go','go']],0);
-    const platform=await choose(rl,'어디에서 사용할까요?',[['Web','web'],['Mobile','mobile'],['Desktop','desktop'],['Web + Mobile','web+mobile'],['여러 플랫폼','multi']],0);
-    const autonomy=await choose(rl,'AI가 어디까지 스스로 진행해도 될까요?',[['Assisted — 큰 작업 전 확인','assisted'],['Standard — Milestone 단위 확인','standard'],['Autonomous — 위험 작업 외 자동 진행','autonomous']],1);
-    const user=await ask(rl,'이 제품을 주로 누가 사용하나요?','일반 사용자');
-    const problem=await ask(rl,'사용자의 어떤 문제를 해결하나요?');
-    const mvp=await ask(rl,'첫 버전에 꼭 필요한 기능은? (쉼표로 구분)');
-    const db=await choose(rl,'데이터는 어디에 저장할까요?',[['PostgreSQL','postgresql'],['SQLite','sqlite'],['기기/로컬 저장','local'],['아직 결정하지 않음','undecided']],0);
-
-    const missing=[];
-    if(!idea)missing.push('만들고 싶은 제품');
-    if(!problem)missing.push('해결하려는 문제');
-    if(!mvp)missing.push('첫 버전 핵심 기능');
-    if(['strict','production'].includes(mode)&&db==='undecided')missing.push('데이터 저장 방식');
-    if(missing.length){
-      console.log('\n아직 개발을 시작하기 어렵습니다.');
-      for(const x of missing) console.log(`! ${x}`);
-      console.log('\n위 항목을 결정한 뒤 다시 실행해주세요.');
-      return;
+    const j=JSON.parse(fs.readFileSync(f,'utf8'));
+    for(const [k,v] of Object.entries(j||{})){
+      if(!(k in out)){ console.warn(`[경고] ${f}: 모르는 항목 ${k} 는 무시합니다.`); continue; }
+      if(k!=='user' && !allowed(k).includes(v)){
+        console.warn(`[경고] ${f}: ${k} 에 쓸 수 없는 값 "${v}" 입니다. 무시합니다. (${allowed(k).join(', ')})`);
+        continue;
+      }
+      out[k]=v;
     }
-
-    const root=path.join(kiniHome,'projects',s);
-    if(exists(root))throw new Error(`이미 같은 프로젝트 폴더가 있습니다: ${root}`);
-    ensure(path.join(root,'docs'));
-    ensure(path.join(root,'planning'));
-    ensure(path.join(root,'.kini','dev'));
-
-    fs.writeFileSync(path.join(root,PROJECT_RULES_FILE),`# ${name} — AI 작업 규칙\n\n이 프로젝트는 KINI Dev가 관리합니다.\n\n## 작업 원칙\n- docs/SPEC.md와 docs/DEFINITION_OF_DONE.md를 먼저 읽습니다.\n- UI나 Agent가 DB를 직접 수정하지 않습니다.\n- Tool → Service → Core 순서를 지킵니다.\n- 구현 → 테스트 → 스스로 검토 → 수정 → 다시 검증합니다.\n- 삭제, 비용 발생, Secret 필요, 운영 배포처럼 위험한 결정은 사용자 확인을 받습니다.\n`);
-    fs.writeFileSync(path.join(root,'docs','PRODUCT.md'),`# 제품 설명\n\n## 만들고 싶은 것\n${idea}\n\n## 주요 사용자\n${user}\n\n## 해결하려는 문제\n${problem}\n`);
-    fs.writeFileSync(path.join(root,'docs','SPEC.md'),`# 기능 요구사항\n\n## 첫 버전 핵심 기능\n${mvp}\n\n## 플랫폼\n${platform}\n\n## 주 언어\n${language}\n\n## 데이터 저장\n${db}\n`);
-    fs.writeFileSync(path.join(root,'docs','ARCHITECTURE.md'),`# 프로그램 구조\n\n화면 / CLI / MCP / AI\n        ↓\n      Tool\n        ↓\n     Service\n        ↓\n      Core\n        ↓\n Repository / DB\n`);
-    fs.writeFileSync(path.join(root,'docs','CAPABILITIES.md'),`# AI가 사용할 수 있는 기능\n\nAI가 직접 DB나 인프라를 건드리지 않도록, 작은 기능 단위의 Tool을 여기에 정리합니다.\n\n예:\n- create_task\n- list_tasks\n- complete_task\n`);
-    fs.writeFileSync(path.join(root,'docs','DEFINITION_OF_DONE.md'),`# 완료 조건\n\n기능이 끝났다고 판단하기 전에 확인합니다.\n\n- [ ] 빌드 성공\n- [ ] 타입/린트 오류 없음\n- [ ] 관련 테스트 통과\n- [ ] 로딩/빈 화면/오류 상황 처리\n- [ ] 권한과 보안 확인\n- [ ] 문서와 실제 코드가 일치\n- [ ] AI가 변경사항을 한 번 더 스스로 검토\n`);
-    fs.writeFileSync(path.join(root,'planning','ROADMAP.md'),`# 개발 순서\n\n- [ ] M1. 기본 구조와 데이터 모델\n- [ ] M2. 핵심 기능\n- [ ] M3. 완성도 개선과 출시 점검\n`);
-    fs.writeFileSync(path.join(root,'planning','CURRENT.md'),`# 현재 상태\n\n상태: 개발 준비 완료\n다음 작업: M1 세부 계획 만들기\n`);
-    fs.writeFileSync(path.join(root,'planning','DECISIONS.md'),'# 중요한 결정 기록\n');
-    fs.writeFileSync(path.join(root,'.kini','dev','project.json'),JSON.stringify({schemaVersion:1,system:'devos',name,slug:s,idea,mode,language,platform,autonomy,targetUser:user,coreProblem:problem,mvp,database:db},null,2));
-    fs.writeFileSync(path.join(root,'.gitignore'),PROJECT_GITIGNORE);
-
-    ensureAgentBridges(root,kiniHome);
-
-    if(has('git')){
-      run('git',['init'],{cwd:root});
-      /**
-       * ⚠️ 첫 커밋까지 만들어 둡니다. 커밋이 하나도 없는 저장소에서는
-       * `git worktree add` 가 "invalid reference: HEAD" 로 실패합니다. 안내문과
-       * 문서가 바로 다음 단계로 worktree 를 시키고 있으니, 만든 직후에
-       * 그대로 따라 하면 막히는 상태로 두면 안 됩니다.
-       *
-       * user.name/email 은 -c 로 넘깁니다. git 을 방금 깐 사람은 전역 설정이
-       * 없어서 커밋이 실패합니다.
-       */
-      run('git',['add','-A'],{cwd:root});
-      run('git',['-c','user.name=KINI','-c','user.email=kini@local','commit','-m','chore: KINI Dev 프로젝트 준비'],{cwd:root});
-    }
-    const projectList=path.join(kiniHome,'_control','PROJECTS.md');
-    if(exists(projectList)) fs.appendFileSync(projectList,`- [ ] ${name} — KINI Dev — ${mode} — ${language}\n`);
-
-    console.log('\n준비 완료 ✓\n');
-    console.log(`프로젝트 폴더: ${root}`);
-    console.log('\n다음 명령을 실행하세요.');
-    console.log(`cd "${root}"`);
-    console.log('kini dev status');
-    console.log('kini dev agent');
-  } finally { rl.close(); }
+  }catch(e){ console.warn(`[경고] ${f} 를 읽지 못했습니다: ${e.message}`); }
+  return out;
 }
+
+const NEW_FLAGS=['slug','name','mode','language','platform','autonomy','user','problem','mvp','db'];
+
+/**
+ * `kini dev new` 인자 해석.
+ *
+ * ⚠️ 값이 하나라도 옵션으로 들어오면 비대화형으로 갑니다. 스크립트나 에이전트가
+ * 부르는 자리에서 질문이 뜨면 그 자리에서 멈춰 버립니다.
+ */
+function parseNewArgs(args){
+  const values={};
+  const rest=[];
+  let yes=false, json=false;
+  for(let i=0;i<args.length;i++){
+    const a=args[i];
+    if(a==='--yes'||a==='-y'){ yes=true; continue; }
+    if(a==='--json'){ json=true; continue; }
+    if(a.startsWith('--')){
+      const [key,inline]=a.slice(2).split(/=(.*)/s);
+      if(!NEW_FLAGS.includes(key))
+        throw new Error(`모르는 옵션입니다: --${key}\n쓸 수 있는 옵션: ${NEW_FLAGS.map(f=>'--'+f).join(', ')}, --yes, --json`);
+      const v=inline!==undefined?inline:args[++i];
+      if(v===undefined) throw new Error(`--${key} 에 값이 없습니다.`);
+      if(key in CHOICES && !allowed(key).includes(v))
+        throw new Error(`--${key} 에 쓸 수 없는 값입니다: ${v}\n쓸 수 있는 값: ${allowed(key).join(', ')}`);
+      values[key]=v;
+      continue;
+    }
+    rest.push(a);
+  }
+  return {idea:rest.join(' ').trim(),values,yes,json,nonInteractive:yes||Object.keys(values).length>0};
+}
+
+/** 시작하기 전에 반드시 정해져 있어야 하는 것. */
+function missingDecisions(c){
+  const missing=[];
+  if(!c.idea)missing.push('만들고 싶은 제품');
+  if(!c.coreProblem)missing.push('해결하려는 문제');
+  if(!c.mvp)missing.push('첫 버전 핵심 기능');
+  if(['strict','production'].includes(c.mode)&&c.database==='undecided')missing.push('데이터 저장 방식');
+  return missing;
+}
+
+function refuse(missing){
+  throw new Error(`아직 개발을 시작하기 어렵습니다.\n${missing.map(x=>`! ${x}`).join('\n')}\n\n위 항목을 결정한 뒤 다시 실행해주세요.`);
+}
+
+/** 실제로 폴더와 문서를 만드는 자리. 대화형과 비대화형이 같은 길을 지납니다. */
+function createProject(c,kiniHome){
+  const root=path.join(kiniHome,'projects',c.slug);
+  if(exists(root))throw new Error(`이미 같은 프로젝트 폴더가 있습니다: ${root}`);
+  ensure(path.join(root,'docs'));
+  ensure(path.join(root,'planning'));
+  ensure(path.join(root,'.kini','dev'));
+
+  fs.writeFileSync(path.join(root,PROJECT_RULES_FILE),`# ${c.name} — AI 작업 규칙\n\n이 프로젝트는 KINI Dev가 관리합니다.\n\n## 작업 원칙\n- docs/SPEC.md와 docs/DEFINITION_OF_DONE.md를 먼저 읽습니다.\n- UI나 Agent가 DB를 직접 수정하지 않습니다.\n- Tool → Service → Core 순서를 지킵니다.\n- 구현 → 테스트 → 스스로 검토 → 수정 → 다시 검증합니다.\n- 삭제, 비용 발생, Secret 필요, 운영 배포처럼 위험한 결정은 사용자 확인을 받습니다.\n`);
+  fs.writeFileSync(path.join(root,'docs','PRODUCT.md'),`# 제품 설명\n\n## 만들고 싶은 것\n${c.idea}\n\n## 주요 사용자\n${c.targetUser}\n\n## 해결하려는 문제\n${c.coreProblem}\n`);
+  fs.writeFileSync(path.join(root,'docs','SPEC.md'),`# 기능 요구사항\n\n## 첫 버전 핵심 기능\n${c.mvp}\n\n## 플랫폼\n${c.platform}\n\n## 주 언어\n${c.language}\n\n## 데이터 저장\n${c.database}\n`);
+  fs.writeFileSync(path.join(root,'docs','ARCHITECTURE.md'),`# 프로그램 구조\n\n화면 / CLI / MCP / AI\n        ↓\n      Tool\n        ↓\n     Service\n        ↓\n      Core\n        ↓\n Repository / DB\n`);
+  fs.writeFileSync(path.join(root,'docs','CAPABILITIES.md'),`# AI가 사용할 수 있는 기능\n\nAI가 직접 DB나 인프라를 건드리지 않도록, 작은 기능 단위의 Tool을 여기에 정리합니다.\n\n예:\n- create_task\n- list_tasks\n- complete_task\n`);
+  fs.writeFileSync(path.join(root,'docs','DEFINITION_OF_DONE.md'),`# 완료 조건\n\n기능이 끝났다고 판단하기 전에 확인합니다.\n\n- [ ] 빌드 성공\n- [ ] 타입/린트 오류 없음\n- [ ] 관련 테스트 통과\n- [ ] 로딩/빈 화면/오류 상황 처리\n- [ ] 권한과 보안 확인\n- [ ] 문서와 실제 코드가 일치\n- [ ] AI가 변경사항을 한 번 더 스스로 검토\n`);
+  fs.writeFileSync(path.join(root,'planning','ROADMAP.md'),`# 개발 순서\n\n- [ ] M1. 기본 구조와 데이터 모델\n- [ ] M2. 핵심 기능\n- [ ] M3. 완성도 개선과 출시 점검\n`);
+  fs.writeFileSync(path.join(root,'planning','CURRENT.md'),`# 현재 상태\n\n상태: 개발 준비 완료\n다음 작업: M1 세부 계획 만들기\n`);
+  fs.writeFileSync(path.join(root,'planning','DECISIONS.md'),'# 중요한 결정 기록\n');
+  fs.writeFileSync(path.join(root,'.kini','dev','project.json'),JSON.stringify({schemaVersion:1,system:'devos',...c},null,2)+'\n');
+  fs.writeFileSync(path.join(root,'.gitignore'),PROJECT_GITIGNORE);
+
+  ensureAgentBridges(root,kiniHome);
+
+  if(has('git')){
+    run('git',['init'],{cwd:root});
+    /**
+     * ⚠️ 첫 커밋까지 만들어 둡니다. 커밋이 하나도 없는 저장소에서는
+     * `git worktree add` 가 "invalid reference: HEAD" 로 실패합니다. 안내문과
+     * 문서가 바로 다음 단계로 worktree 를 시키고 있으니, 만든 직후에
+     * 그대로 따라 하면 막히는 상태로 두면 안 됩니다.
+     *
+     * user.name/email 은 -c 로 넘깁니다. git 을 방금 깐 사람은 전역 설정이
+     * 없어서 커밋이 실패합니다.
+     */
+    run('git',['add','-A'],{cwd:root});
+    run('git',['-c','user.name=KINI','-c','user.email=kini@local','commit','-m','chore: KINI Dev 프로젝트 준비'],{cwd:root});
+  }
+  const projectList=path.join(kiniHome,'_control','PROJECTS.md');
+  if(exists(projectList)) fs.appendFileSync(projectList,`- [ ] ${c.name} — KINI Dev — ${c.mode} — ${c.language}\n`);
+  return root;
+}
+
+/** 옵션으로 받은 값 + 기본값으로 설정을 만듭니다. */
+function configFromFlags(idea,values,defaults){
+  const s=slug(values.slug||slug(idea).slice(0,36));
+  return {
+    name:values.name||s,
+    slug:s,
+    idea,
+    mode:values.mode||defaults.mode,
+    language:values.language||defaults.language,
+    platform:values.platform||defaults.platform,
+    autonomy:values.autonomy||defaults.autonomy,
+    targetUser:values.user||defaults.user,
+    coreProblem:values.problem||'',
+    mvp:values.mvp||'',
+    database:values.db||defaults.db
+  };
+}
+
+async function askProject(rl,idea,defaults){
+  const at=(key,value)=>Math.max(0,allowed(key).indexOf(value));
+  const theIdea=idea||await ask(rl,'무엇을 만들어볼까요?');
+  const s=slug(await ask(rl,'프로젝트 폴더명',slug(theIdea).slice(0,36)));
+  const name=await ask(rl,'프로젝트 이름',s);
+  const mode=await choose(rl,'개발 모드',CHOICES.mode,at('mode',defaults.mode));
+  const language=await choose(rl,'주 언어',CHOICES.language,at('language',defaults.language));
+  const platform=await choose(rl,'어디에서 사용할까요?',CHOICES.platform,at('platform',defaults.platform));
+  const autonomy=await choose(rl,'AI가 어디까지 스스로 진행해도 될까요?',CHOICES.autonomy,at('autonomy',defaults.autonomy));
+  const targetUser=await ask(rl,'이 제품을 주로 누가 사용하나요?',defaults.user);
+  const problem=await ask(rl,'사용자의 어떤 문제를 해결하나요?');
+  const mvp=await ask(rl,'첫 버전에 꼭 필요한 기능은? (쉼표로 구분)');
+  const database=await choose(rl,'데이터는 어디에 저장할까요?',CHOICES.db,at('db',defaults.db));
+  return {name,slug:s,idea:theIdea,mode,language,platform,autonomy,targetUser,coreProblem:problem,mvp,database};
+}
+
+async function newProject(args,kiniHome){
+  const {idea,values,json,nonInteractive}=parseNewArgs(args);
+  const defaults=loadDefaults(kiniHome);
+
+  // json 으로 부를 때는 사람이 읽는 줄이 stdout 을 더럽히면 안 됩니다.
+  const say=(...a)=>{ if(json) console.error(...a); else console.log(...a); };
+  if(!json) header();
+
+  let config;
+  if(nonInteractive){
+    config=configFromFlags(idea,values,defaults);
+  }else{
+    const rl=readline.createInterface({input,output});
+    try{ config=await askProject(rl,idea,defaults); }
+    finally{ rl.close(); }
+  }
+
+  const missing=missingDecisions(config);
+  if(missing.length) refuse(missing);
+
+  const root=createProject(config,kiniHome);
+
+  if(json){
+    console.log(JSON.stringify({ok:true,root,...config}));
+    return;
+  }
+  say('\n준비 완료 ✓\n');
+  say(`프로젝트 폴더: ${root}`);
+  say('\n다음 명령을 실행하세요.');
+  say(`cd "${root}"`);
+  say('kini dev status');
+  say('kini dev agent');
+}
+
 /** 워크스페이스 안의 KINI Dev 프로젝트들. */
 function listProjects(kiniHome){
   const dir=path.join(kiniHome||'','projects');
@@ -347,7 +466,7 @@ function agent(wanted,kiniHome){
 }
 function help(){
   header();
-  console.log(`kini dev doctor\nkini dev new [아이디어]\nkini dev status\nkini dev worktree new <기능명>\nkini dev agent          설치된 에이전트로 시작\nkini dev agent list     무엇을 쓸 수 있는지\nkini dev claude         특정 에이전트 지정\nkini dev codex          (같음 - 예전 이름도 그대로 됩니다)`);
+  console.log(`kini dev doctor\nkini dev new [아이디어]         묻는 대로 답하며 만들기\nkini dev new "아이디어" --problem "..." --mvp "..." --yes\n                        묻지 않고 만들기 (스크립트/에이전트용, --json 으로 결과 출력)\nkini dev status\nkini dev worktree new <기능명>\nkini dev agent          설치된 에이전트로 시작\nkini dev agent list     무엇을 쓸 수 있는지\nkini dev claude         특정 에이전트 지정\nkini dev codex          (같음 - 예전 이름도 그대로 됩니다)`);
 }
 
 /**
@@ -367,7 +486,7 @@ export async function runDevOS(args,{kiniHome}){
   const [cmd,...rest]=args;
   if(!cmd || cmd==='help' || cmd==='--help' || cmd==='-h') help();
   else if(cmd==='doctor') devDoctor(kiniHome);
-  else if(cmd==='new') await newProject(rest.join(' '),kiniHome);
+  else if(cmd==='new') await newProject(rest,kiniHome);
   else if(cmd==='status') status(kiniHome);
   else if(cmd==='worktree'&&rest[0]==='new') worktree(rest.slice(1).join('-'),kiniHome);
   // ⚠️ `codex` 는 예전부터 쓰던 이름이라 그대로 둡니다. 문서와 습관에 남아
