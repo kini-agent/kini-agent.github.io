@@ -147,7 +147,7 @@ AI가 어디까지 스스로 진행해도 될까요?
   <div class="step"><div class="n">5</div><div><b>Codex를 시작합니다.</b><p>이제 AI는 위 문서들을 기준으로 프로젝트를 이해하고 작업합니다.</p></div></div>
   <div class="code"><div class="codeh"><span>terminal</span><button class="copy">Copy</button></div><pre><code>cd ~/kini/projects/프로젝트이름
 kini dev status
-kini dev codex</code></pre></div>
+kini dev agent</code></pre></div>
 
   <h3>더 짧게 시작하고 싶다면</h3>
   <p>현재 설치된 실행 시스템은 KINI Dev 하나이므로, 아래처럼 바로 아이디어를 말해도 KINI Dev의 새 프로젝트 만들기로 연결됩니다.</p>
@@ -249,7 +249,7 @@ DB 저장</code></pre></div>
   <p>초기화 전 Profile은 <span class="inline">~/kini/backups/</span>에 자동 백업됩니다. 프로젝트와 KINI Core는 삭제하지 않습니다.</p>
 
   <h3>AI는 이 Profile을 어떻게 사용하나요?</h3>
-  <p><span class="inline">kini dev status</span> 또는 <span class="inline">kini dev codex</span>를 실행하면 현재 Profile을 프로젝트의 <span class="inline">.kini/KINI_PROFILE.md</span>에 자동 동기화합니다. 그래서 같은 KINI Dev라도 사용자별 선호가 실제 Agent 작업에 반영됩니다.</p>
+  <p><span class="inline">kini dev status</span> 또는 <span class="inline">kini dev agent</span>를 실행하면 현재 Profile을 프로젝트의 <span class="inline">.kini/KINI_PROFILE.md</span>에 자동 동기화합니다. 그래서 같은 KINI Dev라도 사용자별 선호가 실제 Agent 작업에 반영됩니다.</p>
 
   <div class="call warn"><strong>Secret은 Profile에 넣지 마세요.</strong> API Key, 비밀번호, 인증 토큰은 Profile 저장 대상이 아닙니다. Secret은 운영체제 Keychain, 환경 변수, Secret Manager 같은 별도 안전한 저장소를 사용해야 합니다.</div>
 </section>
@@ -267,7 +267,8 @@ DB 저장</code></pre></div>
   <tr><td><span class="inline">kini dev new "아이디어"</span></td><td>KINI Dev에서 새 프로젝트를 준비합니다.</td></tr>
   <tr><td><span class="inline">kini dev status</span></td><td>현재 개발 프로젝트 상태를 확인합니다.</td></tr>
   <tr><td><span class="inline">kini dev worktree new calendar</span></td><td>캘린더 기능을 별도 작업 폴더로 나눕니다.</td></tr>
-  <tr><td><span class="inline">kini dev codex</span></td><td>현재 프로젝트에서 Codex를 실행합니다.</td></tr>
+  <tr><td><span class="inline">kini dev agent</span></td><td>현재 프로젝트에서 코딩 에이전트를 실행합니다. Claude Code · Codex CLI 등 설치된 것을 씁니다.</td></tr>
+  <tr><td><span class="inline">kini dev agent list</span></td><td>쓸 수 있는 에이전트와 설치 여부를 봅니다.</td></tr>
   </tbody></table></div>
   <div class="call"><strong>기존 사용자:</strong> 이전 <span class="inline">devos ...</span> 명령도 당분간 호환됩니다. 새 문서와 새 프로젝트에서는 <span class="inline">kini dev ...</span>를 권장합니다.</div>
 </section>

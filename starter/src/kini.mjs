@@ -48,7 +48,7 @@ function init(){
     command:'dev',
     status:'built-in',
     intents:['software-development','coding','app-development','bug-fixing'],
-    commands:['doctor','new','status','worktree','codex'],
+    commands:['doctor','new','status','worktree','agent','claude','codex'],
     description:'Software development operating system for KINI.'
   },null,2));
   console.log(`✓ KINI workspace initialized: ${h}`);
@@ -57,8 +57,12 @@ function init(){
 }
 function doctor(){
   banner();
-  const rows=[['Git','git'],['Node.js','node'],['npm','npm'],['pnpm','pnpm'],['Codex CLI','codex']];
+  // ⚠️ 코딩 에이전트는 여러 개 중 **하나만 있으면 됩니다.** 예전에는 Codex 만
+  // 확인해서, Claude 를 쓰는 사람에게는 멀쩡한 환경이 "missing" 으로 보였습니다.
+  const rows=[['Git','git'],['Node.js','node'],['npm','npm'],['pnpm','pnpm']];
   for(const [label,cmd] of rows) console.log(`${has(cmd)?'✓':'!'} ${label}`);
+  const agents=[['Claude Code','claude'],['Codex CLI','codex']].filter(([,c])=>has(c));
+  console.log(`${agents.length?'✓':'!'} 코딩 에이전트${agents.length?`  ${agents.map(([l])=>l).join(', ')}`:'  (없음 - kini dev agent list)'}`);
   console.log(`\nKINI_HOME  ${home()}`);
   console.log(`Workspace  ${exists(home())?'ready':'not initialized'}`);
   console.log(`Profile    ${exists(path.join(home(),'profile'))?'ready':'not initialized'}`);

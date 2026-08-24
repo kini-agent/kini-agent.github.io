@@ -10,6 +10,60 @@ const run=(cmd,args=[],opts={})=>spawnSync(cmd,args,{encoding:'utf8',shell:proce
 const has=cmd=>(process.platform==='win32'?run('where',[cmd]):run('which',[cmd])).status===0;
 const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9가-힣]+/g,'-').replace(/^-+|-+$/g,'')||'project';
 
+/**
+ * 쓸 수 있는 코딩 에이전트 목록.
+ *
+ * 예전에는 `codex` 하나가 코드에 박혀 있어서 다른 모델을 쓰는 사람은 이 명령을
+ * 아예 못 썼습니다. 하는 일이 "프로젝트 폴더에서 CLI 를 띄운다" 뿐이라
+ * 특정 회사에 묶일 이유가 없습니다.
+ *
+ * 여기 없는 도구는 profile 에서 더할 수 있습니다 (아래 loadAgents 참고).
+ */
+const BUILTIN_AGENTS=[
+  {id:'claude',label:'Claude Code',cmd:'claude',install:'npm install -g @anthropic-ai/claude-code'},
+  {id:'codex', label:'Codex CLI',  cmd:'codex', install:'npm install -g @openai/codex'},
+];
+
+/**
+ * profile/AGENTS.json 이 있으면 목록에 더합니다. 같은 id 면 profile 쪽이 이깁니다.
+ * 파일이 깨져 있어도 명령이 죽지 않게 조용히 무시합니다 - 이건 편의 기능이지
+ * 없으면 안 되는 것이 아닙니다.
+ */
+function loadAgents(kiniHome){
+  const extra=[];
+  try{
+    const f=path.join(kiniHome||'','profile','AGENTS.json');
+    if(exists(f)){
+      const j=JSON.parse(fs.readFileSync(f,'utf8'));
+      if(Array.isArray(j)) for(const a of j) if(a&&a.id&&a.cmd) extra.push(a);
+    }
+  }catch{}
+  const byId=new Map(BUILTIN_AGENTS.map(a=>[a.id,a]));
+  for(const a of extra) byId.set(a.id,{...byId.get(a.id),...a});
+  return [...byId.values()];
+}
+
+/** 설치돼 있는 것만. 순서는 목록 순서를 따릅니다. */
+const installedAgents=list=>list.filter(a=>has(a.cmd));
+
+/**
+ * 어떤 것을 쓸지.
+ * 1) 인자로 지정한 것  2) KINI_AGENT 환경변수  3) 설치된 것 중 첫 번째
+ *
+ * ⚠️ 지정했는데 안 깔려 있으면 **다른 것으로 몰래 바꾸지 않습니다.** 사용자가
+ * 고른 것과 다른 모델이 뜨는 편이 안 뜨는 것보다 나쁩니다.
+ */
+function pickAgent(list,wanted){
+  const want=wanted||process.env.KINI_AGENT;
+  if(want){
+    const hit=list.find(a=>a.id===want||a.cmd===want);
+    // ⚠️ 목록에 있는 것과 깔려 있는 것은 다릅니다. 여기서 has() 를 안 보면
+    // 없는 CLI 를 spawn 해서 "실행" 이라고 찍고 아무 일도 안 일어납니다.
+    return {agent:hit&&has(hit.cmd)?hit:null,explicit:true,want};
+  }
+  return {agent:installedAgents(list)[0]||null,explicit:false,want:null};
+}
+
 function header(){ console.log('\nKINI Dev  소프트웨어 개발 시스템\n'); }
 async function ask(rl,label,def=''){const v=(await rl.question(`${label}${def?` [${def}]`:''}: `)).trim();return v||def;}
 async function choose(rl,label,items,def=0){
@@ -39,7 +93,7 @@ function devDoctor(kiniHome){
   console.log(`Projects: ${path.join(kiniHome,'projects')}`);
   console.log(`Worktrees: ${path.join(kiniHome,'worktrees')}`);
   console.log(`Git: ${has('git')?'ready':'missing'}`);
-  console.log(`Codex: ${has('codex')?'ready':'missing'}`);
+  for(const a of loadAgents(kiniHome)) console.log(`${a.label}: ${has(a.cmd)?'ready':'missing'}`);
 }
 async function newProject(ideaArg,kiniHome){
   header();
@@ -127,20 +181,41 @@ function worktree(name,kiniHome){
   console.log(`✓ 작업 폴더: ${target}`);
   console.log(`✓ Git branch: ${branch}`);
   console.log(`\ncd "${target}"`);
-  console.log('kini dev codex');
+  console.log('kini dev agent');
 }
-function codex(){
+function agentList(kiniHome){
   header();
-  if(!has('codex')){
-    console.log('Codex CLI가 없습니다.');
-    console.log('설치: npm install -g @openai/codex');
+  const list=loadAgents(kiniHome);
+  console.log('코딩 에이전트');
+  for(const a of list) console.log(`${has(a.cmd)?'✓':'!'} ${a.label.padEnd(14)} ${a.cmd}${has(a.cmd)?'':`   설치: ${a.install||'-'}`}`);
+  const {agent}=pickAgent(list);
+  console.log(`\n기본값: ${agent?agent.label:'(설치된 것 없음)'}`);
+  console.log('바꾸기: KINI_AGENT=claude kini dev agent');
+  console.log('더하기: ~/kini/profile/AGENTS.json 에 {id,label,cmd,install} 배열');
+}
+
+function agent(wanted,kiniHome){
+  header();
+  const list=loadAgents(kiniHome);
+  const {agent:picked,explicit,want}=pickAgent(list,wanted);
+  if(!picked){
+    if(explicit){
+      // 이름은 아는데 안 깔린 경우와, 이름 자체를 모르는 경우를 갈라 말해줍니다.
+      const known=list.find(a=>a.id===want||a.cmd===want);
+      if(known){ console.log(`${known.label}가 없습니다.`); console.log(`설치: ${known.install||known.cmd}`); }
+      else console.log(`모르는 에이전트입니다: ${want}\n사용 가능: ${list.map(a=>a.id).join(', ')}`);
+    }else{
+      console.log('코딩 에이전트가 하나도 없습니다.');
+      for(const a of list) console.log(`  ${a.label}: ${a.install||a.cmd}`);
+    }
     return;
   }
-  spawnSync('codex',[],{cwd:projectRoot()||process.cwd(),stdio:'inherit',shell:process.platform==='win32'});
+  console.log(`${picked.label} 실행\n`);
+  spawnSync(picked.cmd,[],{cwd:projectRoot()||process.cwd(),stdio:'inherit',shell:process.platform==='win32'});
 }
 function help(){
   header();
-  console.log(`kini dev doctor\nkini dev new [아이디어]\nkini dev status\nkini dev worktree new <기능명>\nkini dev codex`);
+  console.log(`kini dev doctor\nkini dev new [아이디어]\nkini dev status\nkini dev worktree new <기능명>\nkini dev agent          설치된 에이전트로 시작\nkini dev agent list     무엇을 쓸 수 있는지\nkini dev claude         특정 에이전트 지정\nkini dev codex          (같음 - 예전 이름도 그대로 됩니다)`);
 }
 
 export async function runDevOS(args,{kiniHome}){
@@ -150,6 +225,10 @@ export async function runDevOS(args,{kiniHome}){
   else if(cmd==='new') await newProject(rest.join(' '),kiniHome);
   else if(cmd==='status') status();
   else if(cmd==='worktree'&&rest[0]==='new') worktree(rest.slice(1).join('-'),kiniHome);
-  else if(cmd==='codex') codex();
+  // ⚠️ `codex` 는 예전부터 쓰던 이름이라 그대로 둡니다. 문서와 습관에 남아
+  // 있는 명령을 없애면 고치는 김에 남의 흐름을 끊게 됩니다.
+  else if(cmd==='agent'&&rest[0]==='list') agentList(kiniHome);
+  else if(cmd==='agent') agent(rest[0],kiniHome);
+  else if(loadAgents(kiniHome).some(a=>a.id===cmd||a.cmd===cmd)) agent(cmd,kiniHome);
   else help();
 }

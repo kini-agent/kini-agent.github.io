@@ -16,6 +16,8 @@
     "new",
     "status",
     "worktree",
+    "agent",
+    "claude",
     "codex"
   ],
   "futureCommands": [

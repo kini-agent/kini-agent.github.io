@@ -5,6 +5,12 @@ import { buildProfileContext, ensureProfile } from '../profile.mjs';
 
 const exists=p=>fs.existsSync(p);
 
+/**
+ * 에이전트를 바로 여는 하위 명령들. `devos.mjs` 의 목록과 어긋나면 프로필이
+ * 안 실리므로, 새 에이전트를 더할 때 여기도 같이 본다.
+ */
+const AGENT_COMMANDS=new Set(['claude','codex']);
+
 function projectRoot(){
   let p=process.cwd();
   while(true){
@@ -34,7 +40,14 @@ function syncProfile(root,kiniHome){
 export async function runDevOS(args,{kiniHome}){
   const [cmd]=args;
 
-  if(cmd==='codex' || cmd==='status'){
+  /**
+   * ⚠️ 에이전트를 띄우기 **전에** 프로필을 내려놔야 합니다. 예전에는 `codex`
+   * 라는 이름만 봤기 때문에 다른 에이전트로 시작하면 개인 설정이 반영되지
+   * 않은 채로 돌았습니다. 조용히 틀리는 부류라 이름을 늘리지 않고 "에이전트를
+   * 여는 명령이면 전부" 로 바꿉니다.
+   */
+  const opensAgent = cmd==='agent' || cmd==='status' || AGENT_COMMANDS.has(cmd);
+  if(opensAgent){
     const root=projectRoot();
     if(root) syncProfile(root,kiniHome);
   }

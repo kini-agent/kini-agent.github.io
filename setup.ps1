@@ -32,7 +32,12 @@ try {
   Ok ("Node " + (& node --version))
 
   if (-not (Has "pnpm")) { Info "pnpm 설치"; npm install -g pnpm; Refresh-Path }
-  if (-not (Has "codex")) { Info "OpenAI Codex CLI 설치"; npm install -g @openai/codex; Refresh-Path }
+  # 코딩 에이전트는 강제로 깔지 않습니다 (setup.sh 의 같은 자리 주석 참고).
+  if (-not ((Has "claude") -or (Has "codex") -or (Has "gemini"))) {
+    Info "코딩 에이전트가 없습니다. 원하는 것을 하나 설치하세요:"
+    Info "  Claude Code : npm install -g @anthropic-ai/claude-code"
+    Info "  Codex CLI   : npm install -g @openai/codex"
+  }
   Ok "pnpm"
   Ok "Codex CLI"
 
@@ -56,7 +61,7 @@ try {
   Write-Host "  kini doctor"
   Write-Host "  kini systems"
   Write-Host "  kini dev new \"만들고 싶은 아이디어\""
-  Write-Host "  kini dev codex"
+  Write-Host "  kini dev agent"
 }
 finally {
   if ($TempDir -and (Test-Path $TempDir)) { Remove-Item -Recurse -Force $TempDir -ErrorAction SilentlyContinue }

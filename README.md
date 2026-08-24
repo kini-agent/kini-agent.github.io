@@ -46,7 +46,7 @@ kini doctor
 kini systems
 kini dev new "사진 기록 앱"
 kini dev status
-kini dev codex
+kini dev agent
 ```
 
 아이디어를 바로 입력할 수도 있습니다.

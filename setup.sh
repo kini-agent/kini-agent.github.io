@@ -45,15 +45,32 @@ else fail "지원하지 않는 OS입니다."; fi
 ok "Git $(git --version | awk '{print $3}')"
 ok "Node $(node -v)"
 has pnpm || npm install -g pnpm
-has codex || npm install -g @openai/codex
 ok "pnpm $(pnpm -v)"
-ok "Codex CLI"
 
-TMP="$(mktemp -d)"
+# 코딩 에이전트는 **강제로 깔지 않습니다.**
+# 예전에는 @openai/codex 를 무조건 설치했는데, 이미 다른 에이전트를 쓰는
+# 사람에게는 안 쓸 CLI 와 별도 계정이 조용히 하나 늘어나는 일이었습니다.
+# 하나라도 있으면 넘어가고, 없을 때만 무엇을 깔 수 있는지 알려줍니다.
+if has claude || has codex || has gemini; then
+  ok "코딩 에이전트: $(has claude && printf 'Claude Code '; has codex && printf 'Codex CLI '; has gemini && printf 'Gemini CLI ')"
+else
+  info "코딩 에이전트가 없습니다. 원하는 것을 하나 설치하세요:"
+  info "  Claude Code : npm install -g @anthropic-ai/claude-code"
+  info "  Codex CLI   : npm install -g @openai/codex"
+  info "  (설치 후 kini dev agent list 로 확인)"
+fi
+
+# ⚠️ **임시 폴더에 clone 하면 안 됩니다.** npm link 는 복사가 아니라 심볼릭
+# 링크라, 아래 trap 이 임시 폴더를 지우는 순간 전역 kini 가 끊어진 링크가
+# 됩니다. 설치 중에는 멀쩡해 보이고(kini init 까지 성공) 스크립트가 끝난
+# 뒤부터 안 됩니다. 그래서 워크스페이스 안에 영구히 둡니다.
+SRC="$KINI_HOME/.repo"
 info "KINI repository 다운로드"
-git clone --depth 1 "$REPO" "$TMP/repo" >/dev/null 2>&1
-[[ -f "$TMP/repo/starter/package.json" ]] || fail "starter/package.json을 찾지 못했습니다."
-(cd "$TMP/repo/starter" && npm link)
+mkdir -p "$KINI_HOME"
+if [[ -d "$SRC/.git" ]]; then git -C "$SRC" pull --ff-only >/dev/null 2>&1 || true
+else git clone --depth 1 "$REPO" "$SRC" >/dev/null 2>&1; fi
+[[ -f "$SRC/starter/package.json" ]] || fail "starter/package.json을 찾지 못했습니다."
+(cd "$SRC/starter" && npm link)
 has kini || fail "KINI CLI 설치 실패"
 KINI_HOME="$KINI_HOME" kini init
 ok "KINI workspace: $KINI_HOME"
@@ -62,4 +79,4 @@ echo "다음 단계:"
 echo "  kini doctor"
 echo "  kini systems"
 echo "  kini dev new \"만들고 싶은 아이디어\""
-echo "  kini dev codex"
+echo "  kini dev agent"
