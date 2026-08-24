@@ -80,14 +80,37 @@ function pickAgent(list,wanted){
 }
 
 function header(){ console.log('\nKINI Dev  소프트웨어 개발 시스템\n'); }
-async function ask(rl,label,def=''){const v=(await rl.question(`${label}${def?` [${def}]`:''}: `)).trim();return v||def;}
+
+class InputClosed extends Error{
+  constructor(){ super('입력이 끝나서 취소했습니다. 아무것도 만들지 않았습니다.'); }
+}
+
+/**
+ * 한 줄 물어봅니다.
+ *
+ * ⚠️ readline/promises 의 question 은 입력이 끊기면(파이프 끝, Ctrl+D, Ctrl+C)
+ * **영원히 끝나지 않습니다.** 예전에는 그 자리에서 Node 가 "unsettled top-level
+ * await" 경고만 찍고 종료 코드 0 으로 끝났습니다. 아무것도 안 만들어졌는데
+ * 성공처럼 보이는 것이라 스크립트에서 쓰면 조용히 틀립니다.
+ */
+function question(rl,prompt){
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const onClose=()=>{ if(!settled){ settled=true; reject(new InputClosed()); } };
+    rl.once('close',onClose);
+    const finish=(fn,v)=>{ if(settled)return; settled=true; rl.off('close',onClose); fn(v); };
+    rl.question(prompt).then(v=>finish(resolve,v),e=>finish(reject,e));
+  });
+}
+async function ask(rl,label,def=''){const v=(await question(rl,`${label}${def?` [${def}]`:''}: `)).trim();return v||def;}
 async function choose(rl,label,items,def=0){
   console.log(`\n${label}`);
   items.forEach((x,i)=>console.log(` ${i===def?'›':' '} ${i+1}. ${x[0]}`));
   while(true){
-    const r=(await rl.question(`선택 [${def+1}]: `)).trim();
+    const r=(await question(rl,`선택 [${def+1}]: `)).trim();
     const n=r===''?def:Number(r)-1;
     if(Number.isInteger(n)&&n>=0&&n<items.length)return items[n][1];
+    console.log(`1부터 ${items.length} 사이에서 골라주세요.`);
   }
 }
 function projectRoot(){
@@ -178,13 +201,35 @@ async function newProject(ideaArg,kiniHome){
     console.log('\n다음 명령을 실행하세요.');
     console.log(`cd "${root}"`);
     console.log('kini dev status');
-    console.log('kini dev codex');
+    console.log('kini dev agent');
   } finally { rl.close(); }
 }
-function status(){
+/** 워크스페이스 안의 KINI Dev 프로젝트들. */
+function listProjects(kiniHome){
+  const dir=path.join(kiniHome||'','projects');
+  if(!exists(dir)) return [];
+  return fs.readdirSync(dir,{withFileTypes:true})
+    .filter(e=>e.isDirectory())
+    .filter(e=>exists(path.join(dir,e.name,'.kini','dev','project.json'))||exists(path.join(dir,e.name,'.devos','project.json')))
+    .map(e=>({name:e.name,root:path.join(dir,e.name)}));
+}
+function status(kiniHome){
   header();
   const root=projectRoot();
-  if(!root){console.log('KINI Dev 프로젝트 폴더 안에서 실행해주세요.');return;}
+  if(!root){
+    // 여기서 그냥 "프로젝트 폴더에서 실행하세요" 로 끝내면, 폴더 이름이
+    // 기억 안 나는 사람은 갈 곳이 없습니다. 있는 것을 보여줍니다.
+    const projects=listProjects(kiniHome);
+    if(!projects.length){
+      console.log('아직 만든 프로젝트가 없습니다.');
+      console.log('\n  kini dev new "만들고 싶은 앱"');
+      return;
+    }
+    console.log('KINI Dev 프로젝트 폴더 안에서 실행해주세요.\n');
+    console.log('워크스페이스의 프로젝트');
+    for(const p of projects) console.log(` - ${p.name}   ${p.root}`);
+    return;
+  }
   const c=projectMeta(root);
   console.log(`${c.name}`);
   console.log(`위치: ${root}`);
