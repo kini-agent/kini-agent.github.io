@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>DEVOS — AI Development Operating System</title>
+<style>
+:root{--bg:#090b10;--panel:#10151e;--line:rgba(255,255,255,.09);--text:#f6f8fb;--muted:#a5afbe;--dim:#6e798b;--accent:#91a6ff;--green:#78e5c5}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 14% 0%,rgba(145,166,255,.16),transparent 31rem),radial-gradient(circle at 95% 20%,rgba(120,229,197,.08),transparent 28rem),var(--bg);color:var(--text);font-family:Inter,Pretendard,"Noto Sans KR",system-ui,sans-serif;line-height:1.65}a{color:inherit}
+.wrap{max-width:1160px;margin:auto;padding:34px 22px 80px}nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:58px}.brand{display:flex;align-items:center;gap:11px;font-weight:850}.logo{width:39px;height:39px;border-radius:12px;display:grid;place-items:center;background:rgba(145,166,255,.14);border:1px solid rgba(145,166,255,.28)}.navcopy{color:var(--dim);font-size:12px}
+.kicker{color:var(--green);font-size:12px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}.hero{max-width:900px}.hero h1{font-size:clamp(42px,6vw,76px);line-height:.96;letter-spacing:-.065em;margin:10px 0 20px}.hero p{max-width:760px;color:var(--muted);font-size:17px;margin:0}.detected{display:inline-flex;align-items:center;gap:8px;margin-top:18px;border:1px solid var(--line);border-radius:999px;padding:8px 11px;color:var(--muted);font-size:12px}.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 15px rgba(120,229,197,.65)}
+.install{margin:38px 0 32px;border:1px solid var(--line);border-radius:22px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.038),rgba(255,255,255,.016))}.install-head{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:21px 23px;border-bottom:1px solid var(--line)}.install-head h2{font-size:20px;letter-spacing:-.03em;margin:0}.tabs{display:flex;gap:7px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:rgba(255,255,255,.025);color:var(--muted);border-radius:10px;padding:8px 10px;cursor:pointer}.tab.active{color:white;background:rgba(145,166,255,.14);border-color:rgba(145,166,255,.32)}
+.install-body{padding:23px}.lead{color:var(--muted);font-size:13px;margin:0 0 13px}.command{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;background:#07090d;padding:14px 15px;overflow:auto}.command code{flex:1;white-space:nowrap;font:12px/1.6 "SFMono-Regular",Consolas,monospace;color:#dce4ef}.copy{border:0;border-radius:8px;background:rgba(255,255,255,.07);color:#d2dae5;padding:7px 9px;cursor:pointer}.note{margin-top:10px;color:var(--dim);font-size:12px}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.btn{display:inline-flex;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12px}.btn.primary{background:#f4f7ff;color:#0a0d12;border-color:#f4f7ff;font-weight:850}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:30px 0 48px}.card{border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.024);padding:18px}.card .n{color:var(--green);font-size:11px;font-weight:850;letter-spacing:.12em}.card h3{font-size:16px;margin:7px 0 6px}.card p{color:var(--muted);font-size:13px;margin:0}
+.section{margin-top:50px}.section h2{font-size:27px;letter-spacing:-.04em;margin:0 0 8px}.section>p{color:var(--muted);max-width:800px}.tree{white-space:pre;overflow:auto;border:1px solid var(--line);border-radius:16px;background:#080a0f;padding:18px;color:#ced7e3;font:12px/1.65 "SFMono-Regular",Consolas,monospace}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:18px}.flow div{text-align:center;border:1px solid var(--line);border-radius:12px;padding:13px 8px;color:#dce3ec;background:rgba(255,255,255,.024);font-size:12px}.footer{margin-top:60px;border-top:1px solid var(--line);padding-top:20px;color:var(--dim);font-size:12px}
+@media(max-width:760px){.wrap{padding:23px 14px 60px}.navcopy{display:none}nav{margin-bottom:44px}.install-head{display:block}.tabs{margin-top:12px}.grid,.flow{grid-template-columns:1fr}.hero h1{font-size:44px}.command code{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav><div class="brand"><div class="logo">D</div>DEVOS</div><div class="navcopy">AI Development Operating System</div></nav>
+
+<section class="hero">
+  <div class="kicker">Agent-ready development</div>
+  <h1>아이디어를<br>개발 시스템으로.</h1>
+  <p>아이디어 인터뷰, 개발 준비도 검사, 프로젝트 구조, Tool/CLI/MCP 규칙, Worktree 기반 병렬 Agent 작업까지 하나의 흐름으로 관리합니다.</p>
+  <div class="detected"><span class="dot"></span><span id="detected">운영체제 감지 중…</span></div>
+</section>
+
+<section class="install">
+  <div class="install-head">
+    <h2>내 OS에 맞게 설치</h2>
+    <div class="tabs">
+      <button class="tab" data-os="windows">Windows</button>
+      <button class="tab" data-os="mac">macOS</button>
+      <button class="tab" data-os="linux">Linux</button>
+    </div>
+  </div>
+  <div class="install-body">
+    <p class="lead">페이지가 운영체제를 자동 감지합니다. 아래 명령 <strong>한 줄</strong>만 실행하면 Starter까지 같이 내려받아 설치합니다.</p>
+    <div class="command"><code id="command"></code><button class="copy" id="copy">Copy</button></div>
+    <div class="note" id="note"></div>
+    <div class="actions">
+      <a class="btn primary" href="devos-starter.zip" download>DEVOS Starter ZIP</a>
+      <a class="btn" id="scriptDownload" download>설치 스크립트만 받기</a>
+    </div>
+  </div>
+</section>
+
+<div class="grid">
+  <div class="card"><div class="n">01</div><h3>Idea Interview</h3><p>대충 말한 아이디어를 AI가 분석하고, 정말 필요한 결정만 질문합니다.</p></div>
+  <div class="card"><div class="n">02</div><h3>Readiness Gate</h3><p>필수 요구사항이 비어 있으면 개발 시작을 막아 재작업을 줄입니다.</p></div>
+  <div class="card"><div class="n">03</div><h3>Autonomous Work</h3><p>Project → Worktree → Agent Session 경계로 여러 기능을 병렬 개발합니다.</p></div>
+</div>
+
+<section class="section">
+  <h2>설치되는 개발 공간</h2>
+  <p>프로젝트와 병렬 작업 폴더를 분리해 여러 Agent가 같은 파일을 동시에 덮어쓰지 않도록 합니다.</p>
+  <div class="tree">~/devos/
+├─ _control/
+│  ├─ PROJECTS.md
+│  ├─ ROADMAP.md
+│  └─ rules/
+│
+├─ projects/
+│  ├─ project-a/
+│  ├─ project-b/
+│  └─ project-c/
+│
+└─ worktrees/
+   ├─ project-a/feat-calendar/
+   └─ project-a/feat-agent-tools/</div>
+</section>
+
+<section class="section">
+  <h2>프로젝트 내부</h2>
+  <div class="tree">project/
+├─ AGENTS.md
+├─ docs/
+│  ├─ PRODUCT.md
+│  ├─ SPEC.md
+│  ├─ ARCHITECTURE.md
+│  ├─ CAPABILITIES.md
+│  └─ DEFINITION_OF_DONE.md
+│
+├─ planning/
+│  ├─ ROADMAP.md
+│  ├─ CURRENT.md
+│  └─ DECISIONS.md
+│
+├─ apps/
+└─ packages/</div>
+</section>
+
+<section class="section">
+  <h2>기본 흐름</h2>
+  <div class="flow"><div>Idea</div><div>Interview</div><div>Ready Check</div><div>Bootstrap</div><div>Codex / Agent</div></div>
+</section>
+
+<section class="section">
+  <h2>설치 후 명령</h2>
+  <div class="tree">devos doctor
+
+devos new "사진과 영상을 기록하는 타임라인 앱"
+
+devos status
+
+devos worktree new calendar
+
+devos codex</div>
+</section>
+
+<div class="footer">DEVOS · GitHub Pages static installer guide · Windows / macOS / Linux</div>
+</div>
+
+<script>
+function baseURL(){
+  const u=new URL(".",location.href);
+  return u.href;
+}
+function detectOS(){
+  const p=(navigator.userAgentData?.platform||navigator.platform||navigator.userAgent||"").toLowerCase();
+  if(p.includes("win"))return"windows";
+  if(p.includes("mac"))return"mac";
+  if(p.includes("linux")||p.includes("x11"))return"linux";
+  return"mac";
+}
+function dataFor(os){
+  const base=baseURL();
+  const starter=base+"devos-starter.zip";
+  if(os==="windows"){
+    const script=base+"setup.ps1";
+    return{
+      name:"Windows",
+      command:`$env:DEVOS_SOURCE='${starter}'; irm '${script}' | iex`,
+      note:"PowerShell에서 실행하세요. Git, Node.js, pnpm, Codex CLI와 DEVOS를 확인/설치합니다.",
+      file:"setup.ps1"
+    };
+  }
+  const script=base+"setup.sh";
+  return{
+    name:os==="mac"?"macOS":"Linux",
+    command:`DEVOS_SOURCE="${starter}" bash -c "$(curl -fsSL '${script}')"`,
+    note:os==="mac"?"Homebrew 기반으로 자동 설정합니다. Intel/Apple Silicon을 같은 스크립트로 처리합니다.":"배포판과 패키지 매니저를 확인하고 Node.js는 필요 시 nvm으로 준비합니다.",
+    file:"setup.sh"
+  };
+}
+function render(os){
+  const d=dataFor(os);
+  document.getElementById("detected").textContent=d.name+" 감지 · 해당 설치 방법 표시 중";
+  document.getElementById("command").textContent=d.command;
+  document.getElementById("note").textContent=d.note;
+  const dl=document.getElementById("scriptDownload");
+  dl.href=d.file;dl.textContent=d.name+" 설치 스크립트";
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.os===os));
+}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>render(b.dataset.os)));
+document.getElementById("copy").addEventListener("click",async()=>{
+  const el=document.getElementById("command"),text=el.textContent,btn=document.getElementById("copy");
+  try{await navigator.clipboard.writeText(text);btn.textContent="Copied";setTimeout(()=>btn.textContent="Copy",1200)}
+  catch{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent="Select"}
+});
+render(detectOS());
+</script>
+</body>
+</html>
