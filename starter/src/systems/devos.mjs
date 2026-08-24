@@ -154,9 +154,22 @@ async function newProject(ideaArg,kiniHome){
     fs.writeFileSync(path.join(root,'planning','CURRENT.md'),`# 현재 상태\n\n상태: 개발 준비 완료\n다음 작업: M1 세부 계획 만들기\n`);
     fs.writeFileSync(path.join(root,'planning','DECISIONS.md'),'# 중요한 결정 기록\n');
     fs.writeFileSync(path.join(root,'.kini','dev','project.json'),JSON.stringify({schemaVersion:1,system:'devos',name,slug:s,idea,mode,language,platform,autonomy,targetUser:user,coreProblem:problem,mvp,database:db},null,2));
-    fs.writeFileSync(path.join(root,'.gitignore'),'node_modules/\n.env\n.env.*\ndist/\nbuild/\n.DS_Store\n');
+    fs.writeFileSync(path.join(root,'.gitignore'),PROJECT_GITIGNORE);
 
-    if(has('git')) run('git',['init'],{cwd:root});
+    if(has('git')){
+      run('git',['init'],{cwd:root});
+      /**
+       * ⚠️ 첫 커밋까지 만들어 둡니다. 커밋이 하나도 없는 저장소에서는
+       * `git worktree add` 가 "invalid reference: HEAD" 로 실패합니다. 안내문과
+       * 문서가 바로 다음 단계로 worktree 를 시키고 있으니, 만든 직후에
+       * 그대로 따라 하면 막히는 상태로 두면 안 됩니다.
+       *
+       * user.name/email 은 -c 로 넘깁니다. git 을 방금 깐 사람은 전역 설정이
+       * 없어서 커밋이 실패합니다.
+       */
+      run('git',['add','-A'],{cwd:root});
+      run('git',['-c','user.name=KINI','-c','user.email=kini@local','commit','-m','chore: KINI Dev 프로젝트 준비'],{cwd:root});
+    }
     const projectList=path.join(kiniHome,'_control','PROJECTS.md');
     if(exists(projectList)) fs.appendFileSync(projectList,`- [ ] ${name} — KINI Dev — ${mode} — ${language}\n`);
 
@@ -188,6 +201,10 @@ function worktree(name,kiniHome){
   if(!has('git'))throw new Error('Git이 필요합니다.');
   const n=slug(name);
   if(!n)throw new Error('기능 이름을 입력해주세요.');
+  if(run('git',['rev-parse','--git-dir'],{cwd:root}).status!==0) throw new Error('Git 저장소가 아닙니다. 프로젝트 폴더에서 git init을 먼저 실행하세요.');
+  // 커밋이 없으면 git 이 "invalid reference: HEAD" 라고만 합니다. 무슨 말인지 알려줍니다.
+  if(run('git',['rev-parse','--verify','HEAD'],{cwd:root}).status!==0)
+    throw new Error('아직 커밋이 하나도 없어서 작업 폴더를 만들 수 없습니다.\n  git add -A && git commit -m "first"\n을 먼저 실행해주세요.');
   const target=path.join(kiniHome,'worktrees',path.basename(root),n);
   const branch=`feat/${n}`;
   ensure(path.dirname(target));
