@@ -1,0 +1,43 @@
+name: KINI CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-cli:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: starter
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Check CLI syntax
+        run: |
+          node --check src/kini.mjs
+          node --check src/devos.mjs
+          node --check src/systems/devos.mjs
+
+      - name: Smoke test KINI
+        run: |
+          export KINI_HOME="$RUNNER_TEMP/kini"
+          node src/kini.mjs --version
+          node src/kini.mjs init
+          node src/kini.mjs doctor
+          node src/kini.mjs systems
+
+      - name: Verify npm package contents
+        run: npm pack --dry-run
