@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-DEVOS_HOME="${DEVOS_HOME:-$HOME/devos}"
-REPO="${DEVOS_REPO:-https://github.com/kini-agent/kini-agent.github.io.git}"
+KINI_HOME="${KINI_HOME:-$HOME/kini}"
+REPO="${KINI_REPO:-https://github.com/kini-agent/kini-agent.github.io.git}"
 NODE_MAJOR_REQUIRED=22
 NODE_LTS_MAJOR=24
 NVM_VERSION=v0.40.7
@@ -50,15 +50,16 @@ ok "pnpm $(pnpm -v)"
 ok "Codex CLI"
 
 TMP="$(mktemp -d)"
-info "DEVOS repository 다운로드"
+info "KINI repository 다운로드"
 git clone --depth 1 "$REPO" "$TMP/repo" >/dev/null 2>&1
 [[ -f "$TMP/repo/starter/package.json" ]] || fail "starter/package.json을 찾지 못했습니다."
 (cd "$TMP/repo/starter" && npm link)
-has devos || fail "DEVOS CLI 설치 실패"
-DEVOS_HOME="$DEVOS_HOME" devos init
-ok "DEVOS workspace: $DEVOS_HOME"
+has kini || fail "KINI CLI 설치 실패"
+KINI_HOME="$KINI_HOME" kini init
+ok "KINI workspace: $KINI_HOME"
 echo
 echo "다음 단계:"
-echo "  devos doctor"
-echo "  devos new \"만들고 싶은 아이디어\""
-echo "  codex"
+echo "  kini doctor"
+echo "  kini systems"
+echo "  kini dev new \"만들고 싶은 아이디어\""
+echo "  kini dev codex"
