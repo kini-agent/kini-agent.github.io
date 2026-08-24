@@ -1,8 +1,19 @@
 {
-  "name": "devos-local",
+  "name": "@kini-agent/kini",
   "version": "0.1.0",
-  "private": true,
+  "description": "KINI - AI work orchestrator with modular operating systems",
   "type": "module",
-  "bin": { "devos": "./src/devos.mjs" },
-  "engines": { "node": ">=22" }
+  "bin": {
+    "kini": "./src/kini.mjs",
+    "devos": "./src/devos.mjs"
+  },
+  "files": [
+    "src",
+    "systems",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
 }
